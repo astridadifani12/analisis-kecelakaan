@@ -1,36 +1,28 @@
-# ================================
-# APP.PY
-# Dashboard Analisis Kecelakaan Fatal
-# ================================
+# APP.PY — Dashboard Analisis Pola Kecelakaan Fatal di Amerika Serikat Tahun 2015
+
+```python
+# =========================================
+# DASHBOARD ANALISIS KECELAKAAN FATAL USA 2015
+# =========================================
 
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
-# ==================================
+# =========================================
 # KONFIGURASI HALAMAN
-# ==================================
+# =========================================
 
 st.set_page_config(
-    page_title="Analisis Kecelakaan Fatal AS 2015",
+    page_title="Analisis Kecelakaan Fatal USA 2015",
     page_icon="🚗",
     layout="wide"
 )
 
-# ==================================
-# JUDUL DASHBOARD
-# ==================================
-
-st.title("🚗 Analisis Pola Kecelakaan Fatal di Amerika Serikat Tahun 2015")
-
-st.markdown("""
-Dashboard ini menyajikan analisis pola kecelakaan fatal di Amerika Serikat tahun 2015 
-berdasarkan faktor waktu dan geografis menggunakan data National Highway Traffic Safety Administration (NHTSA).
-""")
-
-# ==================================
+# =========================================
 # LOAD DATA
-# ==================================
+# =========================================
 
 @st.cache_data
 def load_data():
@@ -39,188 +31,372 @@ def load_data():
 
     return df
 
-df = load_data()
 
-# ==================================
-# PREVIEW DATA
-# ==================================
+# LOAD DATA
+_df = load_data()
 
-st.subheader("📄 Preview Dataset")
-st.dataframe(df.head())
+# COPY DATA
+_df = _df.copy()
 
-# ==================================
+# =========================================
+# PREPROCESSING TAMBAHAN
+# =========================================
+
+# Mapping nama hari
+hari_mapping = {
+    1: 'Minggu',
+    2: 'Senin',
+    3: 'Selasa',
+    4: 'Rabu',
+    5: 'Kamis',
+    6: 'Jumat',
+    7: 'Sabtu'
+}
+
+# Mapping nama bulan
+bulan_mapping = {
+    1: 'Jan',
+    2: 'Feb',
+    3: 'Mar',
+    4: 'Apr',
+    5: 'Mei',
+    6: 'Jun',
+    7: 'Jul',
+    8: 'Agu',
+    9: 'Sep',
+    10: 'Okt',
+    11: 'Nov',
+    12: 'Des'
+}
+
+# Nama hari
+if 'day_of_week' in _df.columns:
+    _df['nama_hari'] = _df['day_of_week'].map(hari_mapping)
+
+# Nama bulan
+if 'month_of_crash' in _df.columns:
+    _df['nama_bulan'] = _df['month_of_crash'].map(bulan_mapping)
+
+# Kategori waktu
+
+def kategori_waktu(jam):
+
+    if 0 <= jam < 6:
+        return 'Dini Hari'
+
+    elif 6 <= jam < 12:
+        return 'Pagi'
+
+    elif 12 <= jam < 18:
+        return 'Siang'
+
+    else:
+        return 'Malam'
+
+
+if 'hour_of_crash' in _df.columns:
+    _df['kategori_waktu'] = _df['hour_of_crash'].apply(kategori_waktu)
+
+# Tipe hari
+
+def tipe_hari(hari):
+
+    if hari in ['Sabtu', 'Minggu']:
+        return 'Akhir Pekan'
+
+    return 'Hari Kerja'
+
+
+if 'nama_hari' in _df.columns:
+    _df['tipe_hari'] = _df['nama_hari'].apply(tipe_hari)
+
+# =========================================
+# HEADER DASHBOARD
+# =========================================
+
+st.title("🚗 Analisis Pola Kecelakaan Fatal di Amerika Serikat Tahun 2015")
+
+st.markdown("""
+Dashboard ini menampilkan hasil Exploratory Data Analysis (EDA) terkait pola kecelakaan fatal di Amerika Serikat tahun 2015 berdasarkan faktor waktu dan geografis.
+""")
+
+# =========================================
 # SIDEBAR FILTER
-# ==================================
+# =========================================
 
-st.sidebar.header("🔍 Filter Data")
-
-# FILTER BULAN
-if 'month_of_crash' in df.columns:
-
-    bulan = st.sidebar.multiselect(
-        "Pilih Bulan",
-        options=sorted(df['month_of_crash'].dropna().unique()),
-        default=sorted(df['month_of_crash'].dropna().unique())
-    )
-
-    df = df[df['month_of_crash'].isin(bulan)]
+st.sidebar.header("🔍 Filter Dashboard")
 
 # FILTER STATE
-if 'state_name' in df.columns:
+if 'state_name' in _df.columns:
 
-    state = st.sidebar.multiselect(
+    selected_state = st.sidebar.multiselect(
         "Pilih State",
-        options=sorted(df['state_name'].dropna().unique()),
-        default=sorted(df['state_name'].dropna().unique())
+        options=sorted(_df['state_name'].dropna().unique()),
+        default=sorted(_df['state_name'].dropna().unique())
     )
 
-    df = df[df['state_name'].isin(state)]
+    _df = _df[_df['state_name'].isin(selected_state)]
 
-# ==================================
-# METRIC DASHBOARD
-# ==================================
+# FILTER KATEGORI WAKTU
+if 'kategori_waktu' in _df.columns:
+
+    selected_waktu = st.sidebar.multiselect(
+        "Pilih Kategori Waktu",
+        options=['Dini Hari', 'Pagi', 'Siang', 'Malam'],
+        default=['Dini Hari', 'Pagi', 'Siang', 'Malam']
+    )
+
+    _df = _df[_df['kategori_waktu'].isin(selected_waktu)]
+
+# FILTER HARI
+if 'nama_hari' in _df.columns:
+
+    urutan_hari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
+
+    selected_hari = st.sidebar.multiselect(
+        "Pilih Hari",
+        options=urutan_hari,
+        default=urutan_hari
+    )
+
+    _df = _df[_df['nama_hari'].isin(selected_hari)]
+
+# =========================================
+# METRIC
+# =========================================
 
 st.subheader("📌 Ringkasan Data")
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
         "Total Kecelakaan",
-        f"{len(df):,}"
+        f"{len(_df):,}"
     )
 
 with col2:
-    if 'state_name' in df.columns:
-        st.metric(
-            "Jumlah State",
-            df['state_name'].nunique()
-        )
+    st.metric(
+        "Jumlah State",
+        _df['state_name'].nunique()
+    )
 
 with col3:
-    if 'number_of_fatalities' in df.columns:
-        st.metric(
-            "Total Fatalitas",
-            int(df['number_of_fatalities'].sum())
-        )
-
-# ==================================
-# VISUALISASI BULAN
-# ==================================
-
-if 'month_of_crash' in df.columns:
-
-    st.subheader("📊 Distribusi Kecelakaan Berdasarkan Bulan")
-
-    fig_month = px.histogram(
-        df,
-        x='month_of_crash',
-        color='month_of_crash',
-        title='Distribusi Kecelakaan Berdasarkan Bulan'
+    st.metric(
+        "Total Fatalitas",
+        int(_df['number_of_fatalities'].sum())
     )
 
-    fig_month.update_layout(
-        xaxis_title="Bulan",
-        yaxis_title="Jumlah Kecelakaan"
+with col4:
+    st.metric(
+        "Total Drunk Driver",
+        int(_df['number_of_drunk_drivers'].sum())
     )
 
-    st.plotly_chart(fig_month, use_container_width=True)
+# =========================================
+# DISTRIBUSI KATEGORI WAKTU
+# =========================================
 
-# ==================================
-# VISUALISASI STATE
-# ==================================
+st.subheader("⏰ Distribusi Kecelakaan Berdasarkan Kategori Waktu")
 
-if 'state_name' in df.columns:
+per_waktu = _df['kategori_waktu'].value_counts().reset_index()
+per_waktu.columns = ['Kategori Waktu', 'Jumlah']
 
-    st.subheader("🗺️ Distribusi Kecelakaan Berdasarkan State")
+fig_waktu = px.bar(
+    per_waktu,
+    x='Kategori Waktu',
+    y='Jumlah',
+    color='Kategori Waktu',
+    text_auto=True
+)
 
-    state_count = (
-        df['state_name']
-        .value_counts()
-        .reset_index()
-    )
+fig_waktu.update_layout(
+    xaxis_title='Kategori Waktu',
+    yaxis_title='Jumlah Kecelakaan'
+)
 
-    state_count.columns = ['State', 'Jumlah']
+st.plotly_chart(fig_waktu, use_container_width=True)
 
-    fig_state = px.bar(
-        state_count,
-        x='State',
-        y='Jumlah',
-        title='Jumlah Kecelakaan per State'
-    )
+# =========================================
+# DISTRIBUSI HARI
+# =========================================
 
-    fig_state.update_layout(
-        xaxis_title="State",
-        yaxis_title="Jumlah Kecelakaan"
-    )
+st.subheader("📅 Distribusi Kecelakaan Berdasarkan Hari")
 
-    st.plotly_chart(fig_state, use_container_width=True)
+urutan_hari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 
-# ==================================
-# VISUALISASI JAM
-# ==================================
+per_hari = (
+    _df['nama_hari']
+    .value_counts()
+    .reindex(urutan_hari)
+    .reset_index()
+)
 
-if 'hour_of_crash' in df.columns:
+per_hari.columns = ['Hari', 'Jumlah']
 
-    st.subheader("⏰ Distribusi Kecelakaan Berdasarkan Jam")
+fig_hari = px.bar(
+    per_hari,
+    x='Hari',
+    y='Jumlah',
+    color='Hari',
+    text_auto=True
+)
 
-    fig_hour = px.histogram(
-        df,
-        x='hour_of_crash',
-        nbins=24,
-        title='Distribusi Kecelakaan Berdasarkan Jam'
-    )
+fig_hari.update_layout(
+    xaxis_title='Hari',
+    yaxis_title='Jumlah Kecelakaan'
+)
 
-    fig_hour.update_layout(
-        xaxis_title="Jam",
-        yaxis_title="Jumlah Kecelakaan"
-    )
+st.plotly_chart(fig_hari, use_container_width=True)
 
-    st.plotly_chart(fig_hour, use_container_width=True)
+# =========================================
+# DISTRIBUSI JAM
+# =========================================
 
-# ==================================
-# VISUALISASI DRUNK DRIVER
-# ==================================
+st.subheader("🕒 Distribusi Kecelakaan Berdasarkan Jam")
 
-if (
-    'number_of_drunk_drivers' in df.columns and
-    'number_of_fatalities' in df.columns
-):
+fig_jam = px.histogram(
+    _df,
+    x='hour_of_crash',
+    nbins=24,
+    title='Distribusi Kecelakaan per Jam'
+)
 
-    st.subheader("🍺 Pengaruh Pengemudi Mabuk terhadap Fatalitas")
+fig_jam.update_layout(
+    xaxis_title='Jam',
+    yaxis_title='Jumlah Kecelakaan'
+)
 
-    fig_drunk = px.scatter(
-        df,
-        x='number_of_drunk_drivers',
-        y='number_of_fatalities',
-        size='number_of_fatalities',
-        hover_data=['state_name'],
-        title='Hubungan Pengemudi Mabuk dan Fatalitas'
-    )
+st.plotly_chart(fig_jam, use_container_width=True)
 
-    fig_drunk.update_layout(
-        xaxis_title="Jumlah Pengemudi Mabuk",
-        yaxis_title="Jumlah Fatalitas"
-    )
+# =========================================
+# DISTRIBUSI BULAN
+# =========================================
 
-    st.plotly_chart(fig_drunk, use_container_width=True)
+st.subheader("📊 Distribusi Kecelakaan Berdasarkan Bulan")
 
-# ==================================
+urutan_bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+                'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+
+per_bulan = (
+    _df['nama_bulan']
+    .value_counts()
+    .reindex(urutan_bulan)
+    .reset_index()
+)
+
+per_bulan.columns = ['Bulan', 'Jumlah']
+
+fig_bulan = px.line(
+    per_bulan,
+    x='Bulan',
+    y='Jumlah',
+    markers=True
+)
+
+fig_bulan.update_layout(
+    xaxis_title='Bulan',
+    yaxis_title='Jumlah Kecelakaan'
+)
+
+st.plotly_chart(fig_bulan, use_container_width=True)
+
+# =========================================
+# ANALISIS GEOGRAFIS
+# =========================================
+
+st.subheader("🗺️ Top 10 State dengan Fatalitas Tertinggi")
+
+per_state = (
+    _df.groupby('state_name')['number_of_fatalities']
+    .sum()
+    .sort_values(ascending=False)
+    .head(10)
+    .reset_index()
+)
+
+fig_state = px.bar(
+    per_state,
+    x='number_of_fatalities',
+    y='state_name',
+    orientation='h',
+    color='number_of_fatalities',
+    text_auto=True
+)
+
+fig_state.update_layout(
+    xaxis_title='Total Fatalitas',
+    yaxis_title='State'
+)
+
+st.plotly_chart(fig_state, use_container_width=True)
+
+# =========================================
+# PENGEMUDI MABUK
+# =========================================
+
+st.subheader("🍺 Pengaruh Pengemudi Mabuk terhadap Fatalitas")
+
+fig_drunk = px.scatter(
+    _df,
+    x='number_of_drunk_drivers',
+    y='number_of_fatalities',
+    size='number_of_fatalities',
+    color='kategori_waktu',
+    hover_data=['state_name']
+)
+
+fig_drunk.update_layout(
+    xaxis_title='Jumlah Pengemudi Mabuk',
+    yaxis_title='Jumlah Fatalitas'
+)
+
+st.plotly_chart(fig_drunk, use_container_width=True)
+
+# =========================================
 # INSIGHT
-# ==================================
+# =========================================
 
 st.subheader("📌 Insight Utama")
 
-st.markdown("""
-- Distribusi kecelakaan fatal menunjukkan adanya pola tertentu pada bulan dan jam tertentu.
-- Beberapa state memiliki tingkat kecelakaan fatal yang lebih tinggi dibanding state lainnya.
-- Faktor pengemudi mabuk berpotensi meningkatkan jumlah fatalitas kecelakaan.
-- Dashboard ini membantu memahami pola kecelakaan untuk mendukung evaluasi keselamatan lalu lintas.
+peak_hour = _df['hour_of_crash'].mode()[0]
+peak_day = _df['nama_hari'].mode()[0]
+peak_time = _df['kategori_waktu'].mode()[0]
+
+st.markdown(f"""
+### Hasil Analisis
+
+- Puncak kecelakaan fatal paling sering terjadi pada jam **{peak_hour}:00**.
+- Hari dengan jumlah kecelakaan tertinggi adalah **{peak_day}**.
+- Kategori waktu paling rawan kecelakaan adalah **{peak_time}**.
+- Beberapa state menunjukkan jumlah fatalitas yang jauh lebih tinggi dibanding state lainnya.
+- Faktor pengemudi mabuk memiliki hubungan dengan meningkatnya jumlah fatalitas.
 """)
 
-# ==================================
+# =========================================
 # FOOTER
-# ==================================
+# =========================================
 
 st.markdown("---")
 st.caption("Dashboard dibuat menggunakan Streamlit, Pandas, dan Plotly 🚀")
+
+```
+
+## requirements.txt
+
+```txt
+streamlit
+pandas
+plotly
+```
+
+## Struktur Repository GitHub
+
+```bash
+analisis-kecelakaan/
+│
+├── app.py
+├── df_clean.csv
+├── requirements.txt
+└── README.md
+```
