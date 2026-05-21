@@ -623,20 +623,75 @@ with tab2:
     tabel_state = tabel_state.sort_values('Total Kecelakaan', ascending=False).reset_index(drop=True)
     tabel_state.index += 1
 
-    st.dataframe(
-        tabel_state.style.background_gradient(
-            cmap='Blues', subset=['Total Kecelakaan']
-        ).background_gradient(
-            cmap='Reds', subset=['Total Fatalitas']
-        ).format({
-            'Total Kecelakaan': '{:,}',
-            'Total Fatalitas': '{:,}',
-            'Rata-rata Fatalitas': '{:.2f}',
+    def color_kecelakaan(val):
+        """Warna biru proporsional untuk kolom Total Kecelakaan."""
+        col = tabel_state['Total Kecelakaan']
+        if col.max() == col.min():
+            intensity = 0
+        else:
+            intensity = (val - col.min()) / (col.max() - col.min())
+        r = int(219 - intensity * 150)
+        g = int(234 - intensity * 150)
+        b = int(254 - intensity * 50)
+        font = 'white' if intensity > 0.6 else '#1e3a5f'
+        return f'background-color: rgb({r},{g},{b}); color: {font}; font-weight: 600'
+
+    def color_fatalitas(val):
+        """Warna merah proporsional untuk kolom Total Fatalitas."""
+        col = tabel_state['Total Fatalitas']
+        if col.max() == col.min():
+            intensity = 0
+        else:
+            intensity = (val - col.min()) / (col.max() - col.min())
+        r = int(254 - intensity * 50)
+        g = int(226 - intensity * 180)
+        b = int(226 - intensity * 180)
+        font = 'white' if intensity > 0.6 else '#7f1d1d'
+        return f'background-color: rgb({r},{g},{b}); color: {font}; font-weight: 600'
+
+    def color_drunk(val):
+        """Warna oranye proporsional untuk kolom Total Drunk Driver."""
+        col = tabel_state['Total Drunk Driver']
+        if col.max() == col.min():
+            intensity = 0
+        else:
+            intensity = (val - col.min()) / (col.max() - col.min())
+        r = int(255)
+        g = int(237 - intensity * 130)
+        b = int(213 - intensity * 180)
+        font = 'white' if intensity > 0.7 else '#7c2d12'
+        return f'background-color: rgb({r},{g},{b}); color: {font}'
+
+    styled = (
+        tabel_state.style
+        .applymap(color_kecelakaan, subset=['Total Kecelakaan'])
+        .applymap(color_fatalitas,  subset=['Total Fatalitas'])
+        .applymap(color_drunk,      subset=['Total Drunk Driver'])
+        .format({
+            'Total Kecelakaan':   '{:,}',
+            'Total Fatalitas':    '{:,}',
+            'Rata-rata Fatalitas':'{:.2f}',
             'Total Drunk Driver': '{:,}'
-        }),
-        use_container_width=True,
-        height=400
+        })
+        .set_properties(**{
+            'font-size': '13px',
+            'border': '1px solid #e5e7eb',
+            'padding': '6px 12px'
+        })
+        .set_table_styles([{
+            'selector': 'thead tr th',
+            'props': [
+                ('background-color', '#1e3a5f'),
+                ('color', 'white'),
+                ('font-weight', '700'),
+                ('font-size', '13px'),
+                ('padding', '8px 12px'),
+                ('text-align', 'center')
+            ]
+        }])
     )
+
+    st.dataframe(styled, use_container_width=True, height=400)
 
 
 # ============================================================
