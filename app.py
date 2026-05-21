@@ -1,6 +1,4 @@
 # APP.PY — Dashboard Analisis Pola Kecelakaan Fatal di Amerika Serikat Tahun 2015
-
-```python
 # =========================================
 # DASHBOARD ANALISIS KECELAKAAN FATAL USA 2015
 # =========================================
