@@ -381,22 +381,3 @@ st.markdown("---")
 st.caption("Dashboard dibuat menggunakan Streamlit, Pandas, dan Plotly 🚀")
 
 ```
-
-## requirements.txt
-
-```txt
-streamlit
-pandas
-plotly
-```
-
-## Struktur Repository GitHub
-
-```bash
-analisis-kecelakaan/
-│
-├── app.py
-├── df_clean.csv
-├── requirements.txt
-└── README.md
-```
