@@ -379,5 +379,3 @@ st.markdown(f"""
 
 st.markdown("---")
 st.caption("Dashboard dibuat menggunakan Streamlit, Pandas, dan Plotly 🚀")
-
-```
